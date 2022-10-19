@@ -14,7 +14,7 @@ from torch import nn
 from utils.ops import count_parameters
 from tqdm import tqdm
 from utils.trainer import train_loop, val_loop, EarlyStop, val_sample_image
-from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import MultiStepLR, ExponentialLR
 
 parser = argparse.ArgumentParser(
     description='Train NUMBER_MODELS models based in the same parameters'
@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument( # Experiment number
     '-e', '--experiment',
     type = int,
-    default = 2,
+    default = 1,
     help = 'The number of the experiment'
 )
 
@@ -96,19 +96,19 @@ print(f"Using {device} device")
 outfile = os.path.join(logs_path, f'train_{args.experiment}.txt')
 with open(outfile, 'w') as sys.stdout:
 
+    model_m =importlib.import_module(f'conf.model_{args.experiment}')
+    model, lidar_bands = model_m.get_model()
+
+    print(f'{model.__class__.__name__}')
+    
     path_to_patches_train = os.path.join(paths.PREPARED_PATH, 'train_patches.npy')
     path_to_patches_val = os.path.join(paths.PREPARED_PATH, 'val_patches.npy')
 
-    ds_train = TreeTrainDataSet(path_to_patches = path_to_patches_train, device = device, data_aug=args.data_aug)
-    ds_val = TreeTrainDataSet(path_to_patches = path_to_patches_val, device = device)
+    ds_train = TreeTrainDataSet(path_to_patches = path_to_patches_train, device = device, data_aug=args.data_aug, lidar_bands = lidar_bands)
+    ds_val = TreeTrainDataSet(path_to_patches = path_to_patches_val, device = device, lidar_bands = lidar_bands)
 
     dataloader_train = DataLoader(ds_train, batch_size=args.batch_size, shuffle=True)
     dataloader_val = DataLoader(ds_val, batch_size=args.batch_size, shuffle=False)
-
-    model_m =importlib.import_module(f'conf.model_{args.experiment}')
-    model = model_m.get_model()
-
-    print(f'{model.__class__.__name__}')
 
     model.to(device)
 
@@ -145,9 +145,14 @@ with open(outfile, 'w') as sys.stdout:
     print(f'Scheduler Gamma :{general.LEARNING_RATE_SCHEDULER_GAMMA}')
     print(f'LR Milestones :{general.LEARNING_RATE_SCHEDULER_MILESTONES}')
 
-    scheduler = MultiStepLR(
+    '''scheduler = MultiStepLR(
         optimizer, 
         milestones = general.LEARNING_RATE_SCHEDULER_MILESTONES,
+        gamma=general.LEARNING_RATE_SCHEDULER_GAMMA,
+        verbose = True
+        )'''
+    scheduler = ExponentialLR(
+        optimizer, 
         gamma=general.LEARNING_RATE_SCHEDULER_GAMMA,
         verbose = True
         )

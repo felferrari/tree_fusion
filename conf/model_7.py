@@ -2,8 +2,8 @@ from conf import default, general, paths
 from models.resunet import ResUnet
 
 def get_model():
-    print('Model RGBNir + nX')
-    lidar_bands = [0]
+    print('Model RGBNir + chm')
+    lidar_bands = [5]
     input_depth_0 = general.N_OPTICAL_BANDS
     input_depth_1 = len(lidar_bands)
     #depths = [64, 128, 256, 512]

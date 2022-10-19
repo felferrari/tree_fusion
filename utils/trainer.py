@@ -13,6 +13,17 @@ from matplotlib import pyplot as plt
 
 
 def train_loop(dataloader, model, loss_fn, optimizer):
+    """Executes a train loop epoch
+
+    Args:
+        dataloader (Dataloader): Pytorch Dataloader to extract train data
+        model (Module): model to be trained
+        loss_fn (Module): Loss Criterion
+        optimizer (Optimizer): Optimizer to adjust the model's weights
+
+    Returns:
+        float: average loss of the epoch
+    """
     train_loss, f1_sum, steps = 0, 0, 0
     pbar = tqdm(dataloader)
     f1 = MulticlassF1Score(num_classes=general.N_CLASSES, ignore_index = general.DISCARDED_CLASS)
@@ -37,6 +48,16 @@ def train_loop(dataloader, model, loss_fn, optimizer):
     return loss
 
 def val_loop(dataloader, model, loss_fn):
+    """Evaluates a validation loop epoch
+
+    Args:
+        dataloader (Dataloader): Pytorch Dataloader to extract validation data
+        model (Module): model to be evaluated
+        loss_fn (Module): Loss Criterion
+
+    Returns:
+        float: average loss of the epoch
+    """
     num_steps = len(dataloader)
     val_loss, f1_sum, steps = 0, 0, 0
     f1 = MulticlassF1Score(num_classes=general.N_CLASSES, ignore_index = general.DISCARDED_CLASS)
@@ -79,6 +100,7 @@ def val_sample_image(dataloader, model, path_to_samples, epoch):
 
 class EarlyStop():
     def __init__(self, train_patience, path_to_save, min_delta = 0, min_epochs = None) -> None:
+
         self.train_pat = train_patience
         self.no_change_epochs = 0
         self.better_value = None

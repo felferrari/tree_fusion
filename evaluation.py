@@ -12,6 +12,7 @@ from tqdm import tqdm
 import numpy as np
 from osgeo import ogr, gdal, gdalconst
 from sklearn.metrics import f1_score, accuracy_score, classification_report
+from utils.ops import load_dict
 
 parser = argparse.ArgumentParser(
     description='Train NUMBER_MODELS models based in the same parameters'
@@ -52,7 +53,10 @@ with open(outfile, 'w') as sys.stdout:
     pred = np.load(os.path.join(predicted_path, 'pred.npy')).flatten()
     label = np.load(os.path.join(paths.PREPARED_PATH, f'{general.PREFIX_LABEL}_test.npy')).flatten()
 
-    keep_label_9 = label != 9
+    remap_dict = load_dict(os.path.join(paths.PREPARED_PATH, 'map.data'))
+    print(remap_dict)
+
+    keep_label_9 = label != general.DISCARDED_CLASS
     keep_label_0 = label != 0
     keep_pred_0 = pred != 0
 
@@ -73,6 +77,6 @@ with open(outfile, 'w') as sys.stdout:
 
 
         #f1 = f1_score((label == class_id).astype(np.uint8), (pred==class_id).astype(np.uint8), average='binary')
-        print(f'Class {class_id}: Accuracy={100*acc:.2f}, F1-Score={100*f1:.2f}, Precision={100*precision:.2f}, Recall={100*recall:.2f}, N ')
+        print(f'Class {class_id}: Accuracy={100*acc:.2f}, F1-Score={100*f1:.2f}, Precision={100*precision:.2f}, Recall={100*recall:.2f}, N of Labels samples: {tp + fn}, N of Predicted samples: {tp + fp}')
 
 

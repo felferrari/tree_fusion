@@ -11,7 +11,7 @@ import torch
 from tqdm import tqdm
 import numpy as np
 from osgeo import ogr, gdal, gdalconst
-from utils.ops import load_dict
+from utils.ops import load_dict, save_geotiff
 
 parser = argparse.ArgumentParser(
     description='Train NUMBER_MODELS models based in the same parameters'
@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument( # Experiment number
     '-e', '--experiment',
     type = int,
-    default = 1,
+    default = 3,
     help = 'The number of the experiment'
 )
 
@@ -65,26 +65,28 @@ results_path = os.path.join(exp_path, f'results')
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} device")
 
-torch.set_num_threads(10)
-
-model_m =importlib.import_module(f'conf.model_{args.experiment}')
-model = model_m.get_model()
-model.to(device)
-
-model_path = os.path.join(models_path, 'model.pt')
-model.load_state_dict(torch.load(model_path))
-
-
-dataset = TreePredDataSet(device=device)
-
-dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
-
 outfile = os.path.join(logs_path, f'pred_{args.experiment}.txt')
-overlaps = general.PREDICTION_OVERLAPS
 with open(outfile, 'w') as sys.stdout:
+
+    #torch.set_num_threads(9)
+
+    model_m =importlib.import_module(f'conf.model_{args.experiment}')
+    model, lidar_bands = model_m.get_model()
+    model.to(device)
+    print(model)
+    print(f'LiDAR bands: {lidar_bands}')
+
+    model_path = os.path.join(models_path, 'model.pt')
+    model.load_state_dict(torch.load(model_path))
+
+    dataset = TreePredDataSet(device=device, lidar_bands = lidar_bands)
+
+    overlaps = general.PREDICTION_OVERLAPS
+
     pred_global_sum = np.zeros(dataset.original_shape+(general.N_CLASSES,))
     for overlap in overlaps:
-        dataset = TreePredDataSet(device=device, overlap = overlap)
+        print(f'Predicting overlap {overlap}')
+        dataset = TreePredDataSet(device=device, overlap = overlap, lidar_bands = lidar_bands)
         dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
         t0 = time.perf_counter()
@@ -117,16 +119,19 @@ with open(outfile, 'w') as sys.stdout:
     pred_b = pred_global.argmax(axis=-1).astype(np.uint8)
 
     np.save(os.path.join(predicted_path, 'pred.npy'), pred_b)
+    np.save(os.path.join(predicted_path, 'pred_prob.npy'), pred_global.astype(np.float16))
 
     remap_dict = load_dict(os.path.join(paths.PREPARED_PATH, 'map.data'))
+    print(remap_dict)
 
     pred_b_remaped = np.empty_like(pred_b)
     for dest, source in remap_dict.items():
         print(f'{dest}-{source}')
         pred_b_remaped[pred_b==dest] = source
 
-
-    base_data = gdal.Open(str(args.base_image), gdalconst.GA_ReadOnly)
+    save_geotiff(str(args.base_image), os.path.join(predicted_path, f'pred_{args.experiment}.tif'), pred_b_remaped, dtype = 'byte')
+    save_geotiff(str(args.base_image), os.path.join(predicted_path, f'pred_probs_{args.experiment}.tif'), pred_global, dtype = 'float')
+    '''base_data = gdal.Open(str(args.base_image), gdalconst.GA_ReadOnly)
 
     geo_transform = base_data.GetGeoTransform()
     x_res = base_data.RasterXSize
@@ -146,5 +151,5 @@ with open(outfile, 'w') as sys.stdout:
 
 
     print('Done')
-
+'''
         

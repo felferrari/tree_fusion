@@ -10,9 +10,11 @@ from torchvision.transforms.functional import hflip, vflip
 from skimage.util import view_as_windows, view_as_blocks
 
 class TreeTrainDataSet(Dataset):
-    def __init__(self, path_to_patches, device, data_aug = False, transformer = ToTensor()) -> None:
+    def __init__(self, path_to_patches, device, data_aug = False, transformer = ToTensor(), lidar_bands = None) -> None:
         opt_img = np.load(os.path.join(paths.PREPARED_PATH, f'{general.PREFIX_OPT}_img.npy'))
         lidar_img = np.load(os.path.join(paths.PREPARED_PATH, f'{general.PREFIX_LIDAR}_img.npy'))
+        if lidar_bands is not None:
+            lidar_img = lidar_img[:, :, lidar_bands]
 
         self.opt_img = opt_img.reshape((-1, opt_img.shape[-1]))
         self.lidar_img = lidar_img.reshape((-1, lidar_img.shape[-1]))
@@ -60,10 +62,15 @@ class TreeTrainDataSet(Dataset):
             label_tensor
         )
 
+
 class TreePredDataSet(Dataset):
-    def __init__(self, device, overlap = 0, transformer = ToTensor()) -> None:
+    def __init__(self, device, overlap = 0, transformer = ToTensor(), lidar_bands = None) -> None:
         opt_img = np.load(os.path.join(paths.PREPARED_PATH, f'{general.PREFIX_OPT}_img.npy'))
         lidar_img = np.load(os.path.join(paths.PREPARED_PATH, f'{general.PREFIX_LIDAR}_img.npy'))
+
+        if lidar_bands is not None:
+            lidar_img = lidar_img[:, :, lidar_bands]
+
         self.transformer = transformer
         self.device = device
         self.original_shape = opt_img.shape[:2]
@@ -89,49 +96,6 @@ class TreePredDataSet(Dataset):
 
     def __getitem__(self, index):
         patch_idx = self.idx_patches[index]
-        opt_tensor = self.transformer(self.opt_img[patch_idx]).to(self.device)
-        lidar_tensor = self.transformer(self.lidar_img[patch_idx]).to(self.device)
-
-        return (
-                opt_tensor,
-                lidar_tensor
-            )
-
-class TreePredDataSet_old(Dataset):
-    def __init__(self, device, shift = 0, transformer = ToTensor()) -> None:
-        opt_img = np.load(os.path.join(paths.PREPARED_PATH, f'{general.PREFIX_OPT}_img.npy'))
-        lidar_img = np.load(os.path.join(paths.PREPARED_PATH, f'{general.PREFIX_LIDAR}_img.npy'))
-        self.transformer = transformer
-        self.device = device
-        self.original_shape = opt_img.shape[:2]
-
-        pixel_shift = int(shift*general.PATCH_SIZE)
-        opt_img = np.pad(opt_img, ((pixel_shift, 0), (pixel_shift, 0), (0,0)), 'reflect')
-        lidar_img = np.pad(lidar_img, ((pixel_shift, 0), (pixel_shift, 0), (0,0)), 'reflect')
-        shape = opt_img.shape[:2]
-        p_0 = general.PATCH_SIZE - (shape[0] % general.PATCH_SIZE)
-        p_1 = general.PATCH_SIZE - (shape[1] % general.PATCH_SIZE)
-        self.padded_pixels = (p_0, p_1)
-        self.pixel_shift = pixel_shift
-
-        self.opt_img = np.pad(opt_img, ((0, p_0), (0, p_1), (0,0)), 'reflect')
-        self.lidar_img = np.pad(lidar_img, ((0, p_0), (0, p_1), (0,0)), 'reflect')
-        shape = self.opt_img.shape[:2]
-
-        idx = np.arange(shape[0]*shape[1]).reshape(shape)
-
-        self.idx_blocks = view_as_blocks(idx, (general.PATCH_SIZE, general.PATCH_SIZE))
-        self.original_blocks_shape = self.idx_blocks.shape
-        self.idx_blocks = self.idx_blocks.reshape((-1, general.PATCH_SIZE, general.PATCH_SIZE))
-
-        self.opt_img = self.opt_img.reshape((-1, self.opt_img.shape[-1]))
-        self.lidar_img = self.lidar_img.reshape((-1, self.lidar_img.shape[-1]))
-
-    def __len__(self):
-        return self.idx_blocks.shape[0]
-
-    def __getitem__(self, index):
-        patch_idx = self.idx_blocks[index]
         opt_tensor = self.transformer(self.opt_img[patch_idx]).to(self.device)
         lidar_tensor = self.transformer(self.lidar_img[patch_idx]).to(self.device)
 
