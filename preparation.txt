@@ -1,0 +1,11 @@
+Class 0: N Train samples = 74,290,268, N Test samples = 74,392,072
+Class 2: N Train samples = 373,242, N Test samples = 275,766
+Class 10: N Train samples = 131,377, N Test samples = 63,217
+Class 11: N Train samples = 40,321, N Test samples = 23,918
+Class 15: N Train samples = 96,398, N Test samples = 75,609
+Class 17: N Train samples = 252,876, N Test samples = 156,465
+Class 21: N Train samples = 55,895, N Test samples = 42,426
+Class 23: N Train samples = 166,304, N Test samples = 265,113
+Class 27: N Train samples = 56,134, N Test samples = 42,126
+Class 99: N Train samples = 19,968,405, N Test samples = 20,094,508
+{0: 0, 1: 2, 2: 15, 3: 17, 4: 21, 5: 23, 6: 27, 7: 99}

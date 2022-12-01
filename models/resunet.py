@@ -24,9 +24,9 @@ class JointFusion(nn.Module):
     def __init__(self, input_depth_0, input_depth_1, depths, n_classes):
         super(JointFusion, self).__init__()
         
-        self.encoder_0 = ResUnetEncoder(input_depth_0, depths)
-        self.encoder_1 = ResUnetEncoder(input_depth_1, depths)
-        self.decoder = ResUnetDecoder(depths)
+        self.encoder_0 = ResUnetEncoderNoSkipp(input_depth_0, depths)
+        self.encoder_1 = ResUnetEncoderNoSkipp(input_depth_1, depths)
+        self.decoder = ResUnetDecoderNoSkipp(depths)
         self.classifier = ResUnetClassifier(depths[0], n_classes)
 
 
@@ -79,6 +79,34 @@ class ResUnetOpt(nn.Module):
 
         return x
 
+class ResUnetEncoderNoSkipp(nn.Module):
+    def __init__(self, input_depth, depths):
+        super(ResUnetEncoderNoSkipp, self).__init__()
+        self.first_res_block = nn.Sequential(
+            nn.Conv2d(input_depth, depths[0], kernel_size=3, padding=1, padding_mode = 'reflect'),
+            nn.BatchNorm2d(depths[0]),
+            nn.ReLU(),
+            nn.Conv2d(depths[0], depths[0], kernel_size=3, padding=1, padding_mode = 'reflect')
+        )
+        self.first_res_cov = nn.Conv2d(input_depth, depths[0], kernel_size=1)
+
+        self.enc_block_0 = ResidualBlock(depths[0], depths[1], stride = 2)
+        self.enc_block_1 = ResidualBlock(depths[1], depths[2], stride = 2)
+        self.enc_block_2 = ResidualBlock(depths[2], depths[3], stride = 2)
+
+    def forward(self, x):
+        #first block
+        x_idt = self.first_res_cov(x)
+        x = self.first_res_block(x)
+        x_0 = x + x_idt
+
+        #encoder blocks
+        x_1 = self.enc_block_0(x_0)
+        x_2 = self.enc_block_1(x_1)
+        x_3 = self.enc_block_2(x_2)
+
+        return x_3
+
 class ResUnetEncoder(nn.Module):
     def __init__(self, input_depth, depths):
         super(ResUnetEncoder, self).__init__()
@@ -106,7 +134,32 @@ class ResUnetEncoder(nn.Module):
         x_3 = self.enc_block_2(x_2)
 
         return x_0, x_1, x_2, x_3
-    
+
+class ResUnetDecoderNoSkipp(nn.Module):
+    def __init__(self, depths):
+        super(ResUnetDecoderNoSkipp, self).__init__()
+        self.dec_block_2 = ResidualBlock(2*depths[3], depths[2])
+        self.dec_block_1 = ResidualBlock(depths[2], depths[1])
+        self.dec_block_0 = ResidualBlock(depths[1], depths[0])
+
+        self.upsample_2 = nn.Upsample(scale_factor=2)
+        self.upsample_1 = nn.Upsample(scale_factor=2)
+        self.upsample_0 = nn.Upsample(scale_factor=2)
+
+    def forward(self, x):
+        x
+        #concatenate sources
+        x_2u = self.upsample_2(x)
+        x_2 = self.dec_block_2(x_2u)
+
+        x_1u = self.upsample_1(x_2)
+        x_1 = self.dec_block_1(x_1u)
+
+        x_0u = self.upsample_0(x_1)
+        x_0 = self.dec_block_0(x_0u)
+
+        return x_0
+
 class ResUnetDecoder(nn.Module):
     def __init__(self, depths):
         super(ResUnetDecoder, self).__init__()
