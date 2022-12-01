@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument( # Experiment number
     '-e', '--experiment',
     type = int,
-    default = 8,
+    default = 9,
     help = 'The number of the experiment'
 )
 

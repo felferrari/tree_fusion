@@ -47,7 +47,7 @@ class LateFusion(nn.Module):
         self.encoder_1 = ResUnetEncoder(input_depth_1, depths)
         self.decoder_0 = ResUnetDecoder(depths)
         self.decoder_1 = ResUnetDecoder(depths)
-        self.classifier = ResUnetClassifier(depths[0], n_classes)
+        self.classifier = ResUnetClassifier(2*depths[0], n_classes)
 
 
     def forward(self, x):
